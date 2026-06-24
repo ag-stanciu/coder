@@ -1,0 +1,193 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+bash_dir="$repo_dir/bash"
+ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
+
+bash_begin="# >>> setup-coder bash_rc >>>"
+bash_end="# <<< setup-coder bash_rc <<<"
+profile_begin="# >>> setup-coder bash_profile >>>"
+profile_end="# <<< setup-coder bash_profile <<<"
+
+log() {
+  echo "==> $*"
+}
+
+warn() {
+  echo "warning: $*" >&2
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+require_file() {
+  [[ -f "$1" ]] || die "missing $1"
+}
+
+require_dir() {
+  [[ -d "$1" ]] || die "missing $1"
+}
+
+install_file() {
+  local src="$1" dst="$2"
+  mkdir -p "$(dirname "$dst")"
+  cp "$src" "$dst"
+}
+
+copy_dir() {
+  local src="$1" dst="$2"
+  mkdir -p "$dst"
+  cp -a "$src/." "$dst/"
+  find "$dst" -type f -name '._*' -delete
+}
+
+install_ghostty_terminfo() {
+  if command -v infocmp >/dev/null 2>&1 && infocmp -x xterm-ghostty >/dev/null 2>&1; then
+    log "xterm-ghostty terminfo already installed"
+    return
+  fi
+
+  if ! command -v tic >/dev/null 2>&1; then
+    warn "tic not found; skipping xterm-ghostty terminfo"
+    return
+  fi
+
+  mkdir -p "$HOME/.terminfo"
+  if tic -x -o "$HOME/.terminfo" "$ghostty_terminfo"; then
+    log "installed xterm-ghostty terminfo"
+  else
+    warn "failed to install xterm-ghostty terminfo"
+  fi
+}
+
+inject_bash_rc() {
+  local bashrc="$HOME/.bashrc"
+  local next
+
+  touch "$bashrc"
+  next="$(mktemp)"
+
+  awk -v begin="$bash_begin" -v end="$bash_end" '
+    $0 == begin { skip = 1; next }
+    $0 == end { skip = 0; next }
+    $0 ~ /^[[:space:]]*(source|\.)[[:space:]]+.*personal\/bash\/prompt\.bash/ { next }
+    $0 ~ /^[[:space:]]*(source|\.)[[:space:]]+.*setup-coder\/bash_prompt\.bash/ { next }
+    !skip { print }
+  ' "$bashrc" > "$next"
+
+  {
+    cat "$next"
+    echo
+    echo "$bash_begin"
+    cat "$bash_dir/bash_rc"
+    echo '[ -f "$HOME/.config/setup-coder/bash_prompt.bash" ] && . "$HOME/.config/setup-coder/bash_prompt.bash"'
+    echo "$bash_end"
+  } > "$bashrc"
+
+  rm -f "$next"
+}
+
+ensure_bash_profile_sources_bashrc() {
+  local profile="$HOME/.bash_profile"
+  local next
+
+  if [[ ! -e "$profile" ]]; then
+    install_file "$bash_dir/bash_profile" "$profile"
+    return
+  fi
+
+  if grep -Eq '(^|[[:space:]])(\.|source)[[:space:]]+(.*/)?\.bashrc' "$profile"; then
+    return
+  fi
+
+  next="$(mktemp)"
+  awk -v begin="$profile_begin" -v end="$profile_end" '
+    $0 == begin { skip = 1; next }
+    $0 == end { skip = 0; next }
+    !skip { print }
+  ' "$profile" > "$next"
+
+  {
+    cat "$next"
+    echo
+    echo "$profile_begin"
+    cat "$bash_dir/bash_profile"
+    echo "$profile_end"
+  } > "$profile"
+
+  rm -f "$next"
+}
+
+install_tpm() {
+  local dst="$HOME/.tmux/plugins/tpm"
+
+  if [[ "${SETUP_CODER_SKIP_TPM:-}" == "1" ]]; then
+    warn "SETUP_CODER_SKIP_TPM=1; skipping TPM"
+    return
+  fi
+
+  if [[ -d "$dst/.git" ]]; then
+    log "TPM already installed"
+    return
+  fi
+
+  if ! command -v git >/dev/null 2>&1; then
+    warn "git not found; skipping TPM"
+    return
+  fi
+
+  log "cloning TPM"
+  if ! git clone --depth=1 https://github.com/tmux-plugins/tpm "$dst"; then
+    warn "failed to clone TPM; tmux config is still installed"
+  fi
+}
+
+require_file "$bash_dir/bash_prompt.bash"
+require_file "$bash_dir/bash_profile"
+require_file "$bash_dir/bash_rc"
+require_file "$ghostty_terminfo"
+require_file "$repo_dir/tmux.conf"
+require_dir "$repo_dir/nvim"
+require_dir "$repo_dir/k9s"
+
+mkdir -p \
+  "$HOME/.config/setup-coder" \
+  "$HOME/.config/tmux" \
+  "$HOME/.config/nvim" \
+  "$HOME/.config/k9s" \
+  "$HOME/.tmux/plugins"
+
+install_ghostty_terminfo
+
+log "installing bash prompt"
+install_file "$bash_dir/bash_prompt.bash" "$HOME/.config/setup-coder/bash_prompt.bash"
+
+log "ensuring ~/.bash_profile sources ~/.bashrc"
+ensure_bash_profile_sources_bashrc
+
+log "injecting bash rc"
+inject_bash_rc
+
+if awk -v begin="$bash_begin" -v end="$bash_end" '
+  $0 == begin { skip = 1; next }
+  $0 == end { skip = 0; next }
+  !skip { print }
+' "$HOME/.bashrc" | grep -Eq '^[[:space:]]*export[[:space:]]+TERM='; then
+  warn "~/.bashrc exports TERM; remove that line if colors/terminfo break"
+fi
+
+log "installing tmux config"
+install_file "$repo_dir/tmux.conf" "$HOME/.config/tmux/tmux.conf"
+
+log "copying nvim config"
+copy_dir "$repo_dir/nvim" "$HOME/.config/nvim"
+
+log "copying k9s config"
+copy_dir "$repo_dir/k9s" "$HOME/.config/k9s"
+
+install_tpm
+
+log "setup complete"

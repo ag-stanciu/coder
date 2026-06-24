@@ -1,0 +1,8 @@
+k9s:
+  ui:
+    enableMouse: false
+    logoless: true
+    skin: tokyo
+  logger:
+    buffer: 5000
+    showTime: true

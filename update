@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  local name="${SETUP_CODER_USAGE_NAME:-$0}"
+  echo "Usage: $name <workspace>" >&2
+  echo "Example: $name dev" >&2
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+log() {
+  echo "==> $*"
+}
+
+quote_args() {
+  local out="" arg
+  for arg in "$@"; do
+    out+="$(printf "%q" "$arg") "
+  done
+  printf "%s" "${out% }"
+}
+
+[[ $# -eq 1 ]] || {
+  usage
+  exit 2
+}
+
+workspace="$1"
+workspace_host="${workspace##*/}"
+[[ "$workspace_host" == *.coder ]] || workspace_host="$workspace_host.coder"
+
+script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+for path in install bash tmux.conf nvim k9s terminfo; do
+  [[ -e "$script_dir/$path" ]] || die "missing $script_dir/$path"
+done
+
+coder_bin="${CODER_BIN:-$(command -v coder || true)}"
+[[ -n "$coder_bin" ]] || die "coder CLI not found"
+
+proxy_parts=("$coder_bin")
+[[ -n "${CODER_CONFIG_DIR:-}" ]] && proxy_parts+=(--global-config "$CODER_CONFIG_DIR")
+proxy_parts+=(ssh --stdio --hostname-suffix coder %h)
+
+ssh_cmd=(
+  ssh
+  -T
+  -o ConnectTimeout=0
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o LogLevel=ERROR
+  -o "ProxyCommand=$(quote_args "${proxy_parts[@]}")"
+  "$workspace_host"
+)
+
+log "checking $workspace_host"
+"${ssh_cmd[@]}" 'printf "connected as %s on %s\n" "$USER" "$HOSTNAME"'
+
+remote_tmp="$("${ssh_cmd[@]}" 'mktemp -d "${TMPDIR:-/tmp}/setup-coder.XXXXXX"')"
+cleanup() {
+  "${ssh_cmd[@]}" "rm -rf $(printf "%q" "$remote_tmp")" >/dev/null 2>&1 || true
+}
+trap cleanup EXIT
+
+log "copying repo snapshot"
+COPYFILE_DISABLE=1 tar -czf - \
+  --exclude './.git' \
+  --exclude './.git/*' \
+  --exclude './.DS_Store' \
+  --exclude '*/.DS_Store' \
+  --exclude './k9s/benchmarks' \
+  --exclude './k9s/benchmarks/*' \
+  --exclude './k9s/clusters' \
+  --exclude './k9s/clusters/*' \
+  --exclude './k9s/screen-dumps' \
+  --exclude './k9s/screen-dumps/*' \
+  -C "$script_dir" . |
+  "${ssh_cmd[@]}" "tar -C $(printf "%q" "$remote_tmp") -xzf -"
+
+log "running install"
+"${ssh_cmd[@]}" "cd $(printf "%q" "$remote_tmp") && chmod +x ./install && ./install"
+
+log "setup complete"
+echo "Open a new SSH session. If tmux is running, restart it with: tmux kill-server"
