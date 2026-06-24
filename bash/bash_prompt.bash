@@ -43,6 +43,7 @@ __c() {
 
   __prompt_command() {
     local status=$?
+    [[ -z "$TMUX" && -n "$TERM" && "$TERM" != dumb ]] && printf '\e[5 q'
 
     local login=
     # if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
