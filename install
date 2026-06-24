@@ -3,12 +3,15 @@ set -euo pipefail
 
 repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 bash_dir="$repo_dir/bash"
+git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
 
 bash_begin="# >>> setup-coder bash_rc >>>"
 bash_end="# <<< setup-coder bash_rc <<<"
 profile_begin="# >>> setup-coder bash_profile >>>"
 profile_end="# <<< setup-coder bash_profile <<<"
+git_begin="# >>> setup-coder gitconfig >>>"
+git_end="# <<< setup-coder gitconfig <<<"
 
 log() {
   echo "==> $*"
@@ -121,6 +124,31 @@ ensure_bash_profile_sources_bashrc() {
   rm -f "$next"
 }
 
+ensure_gitconfig_include() {
+  local gitconfig="$HOME/.gitconfig"
+  local next
+
+  touch "$gitconfig"
+  next="$(mktemp)"
+
+  awk -v begin="$git_begin" -v end="$git_end" '
+    $0 == begin { skip = 1; next }
+    $0 == end { skip = 0; next }
+    !skip { print }
+  ' "$gitconfig" > "$next"
+
+  {
+    cat "$next"
+    echo
+    echo "$git_begin"
+    echo "[include]"
+    echo "  path = ~/.config/setup-coder/gitconfig"
+    echo "$git_end"
+  } > "$gitconfig"
+
+  rm -f "$next"
+}
+
 install_tpm() {
   local dst="$HOME/.tmux/plugins/tpm"
 
@@ -148,6 +176,7 @@ install_tpm() {
 require_file "$bash_dir/bash_prompt.bash"
 require_file "$bash_dir/bash_profile"
 require_file "$bash_dir/bash_rc"
+require_file "$git_config"
 require_file "$ghostty_terminfo"
 require_file "$repo_dir/tmux.conf"
 require_dir "$repo_dir/nvim"
@@ -178,6 +207,10 @@ if awk -v begin="$bash_begin" -v end="$bash_end" '
 ' "$HOME/.bashrc" | grep -Eq '^[[:space:]]*export[[:space:]]+TERM='; then
   warn "~/.bashrc exports TERM; remove that line if colors/terminfo break"
 fi
+
+log "installing git config"
+install_file "$git_config" "$HOME/.config/setup-coder/gitconfig"
+ensure_gitconfig_include
 
 log "installing tmux config"
 install_file "$repo_dir/tmux.conf" "$HOME/.config/tmux/tmux.conf"

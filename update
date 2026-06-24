@@ -35,7 +35,7 @@ workspace_host="${workspace##*/}"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
-for path in install bash tmux.conf nvim k9s terminfo; do
+for path in install bash git tmux.conf nvim k9s terminfo; do
   [[ -e "$script_dir/$path" ]] || die "missing $script_dir/$path"
 done
 
@@ -67,7 +67,7 @@ cleanup() {
 trap cleanup EXIT
 
 log "copying repo snapshot"
-COPYFILE_DISABLE=1 tar -czf - \
+COPYFILE_DISABLE=1 tar --no-xattrs -czf - \
   --exclude './.git' \
   --exclude './.git/*' \
   --exclude './.DS_Store' \
