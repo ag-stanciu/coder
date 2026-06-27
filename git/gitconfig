@@ -7,12 +7,3 @@
   co = checkout
   br = branch
   cob = checkout -b
-
-[pull]
-  rebase = true
-
-[rebase]
-  autoStash = true
-
-[rerere]
-  enabled = true
