@@ -42,6 +42,15 @@ done
 coder_bin="${CODER_BIN:-$(command -v coder || true)}"
 [[ -n "$coder_bin" ]] || die "coder CLI not found"
 
+if [[ -n "$(git -C "$script_dir" ls-files --others --exclude-standard)" ]]; then
+  log "untracked files exist; they will not be uploaded"
+  git -C "$script_dir" ls-files --others --exclude-standard | sed 's/^/  /'
+fi
+
+if ! git -C "$script_dir" diff --quiet; then
+  log "tracked files have local modifications; uploading working tree contents"
+fi
+
 proxy_parts=("$coder_bin")
 [[ -n "${CODER_CONFIG_DIR:-}" ]] && proxy_parts+=(--global-config "$CODER_CONFIG_DIR")
 proxy_parts+=(ssh --stdio --hostname-suffix coder %h)
@@ -66,19 +75,9 @@ cleanup() {
 }
 trap cleanup EXIT
 
-log "copying repo snapshot"
-COPYFILE_DISABLE=1 tar --no-xattrs -czf - \
-  --exclude './.git' \
-  --exclude './.git/*' \
-  --exclude './.DS_Store' \
-  --exclude '*/.DS_Store' \
-  --exclude './k9s/benchmarks' \
-  --exclude './k9s/benchmarks/*' \
-  --exclude './k9s/clusters' \
-  --exclude './k9s/clusters/*' \
-  --exclude './k9s/screen-dumps' \
-  --exclude './k9s/screen-dumps/*' \
-  -C "$script_dir" . |
+log "copying tracked repo files"
+git -C "$script_dir" ls-files -z |
+  COPYFILE_DISABLE=1 tar --no-xattrs --null -C "$script_dir" -czf - -T - |
   "${ssh_cmd[@]}" "tar -C $(printf "%q" "$remote_tmp") -xzf -"
 
 log "running install"

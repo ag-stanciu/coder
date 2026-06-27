@@ -43,6 +43,8 @@ __c() {
 
   __prompt_command() {
     local status=$?
+    history -a
+    history -n
     [[ -z "$TMUX" && -n "$TERM" && "$TERM" != dumb ]] && printf '\e[5 q'
 
     local login=
