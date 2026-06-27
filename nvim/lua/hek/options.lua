@@ -48,6 +48,9 @@ opt.pumheight = 10
 opt.pumblend = 5
 opt.winblend = 5
 opt.timeoutlen = 400
+if vim.env.SSH_TTY or vim.env.SSH_CONNECTION then
+    vim.g.clipboard = "osc52"
+end
 opt.clipboard = 'unnamedplus'
 
 opt.scrolloff = 10

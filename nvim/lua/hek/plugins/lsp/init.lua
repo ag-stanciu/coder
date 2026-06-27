@@ -89,10 +89,15 @@ return {
 
                 -- Set some keybinds conditional on server capabilities
                 if client:supports_method("textDocument/formatting") then
-                    -- if client.server_capabilities.document_formatting then
-                    vim.keymap.set('n', '<leader>fm', vim.lsp.buf.format, opts)
-                elseif client:supports_method 'textDocument/rangeFormatting' then
-                    vim.keymap.set('n', '<leader>fm', vim.lsp.buf.range_formatting, opts)
+                    vim.keymap.set('n', '<leader>fm', function()
+                        vim.lsp.buf.format({ bufnr = bufnr })
+                    end, opts)
+                end
+
+                if client:supports_method("textDocument/rangeFormatting") then
+                    vim.keymap.set('x', '<leader>fm', function()
+                        vim.lsp.buf.format({ bufnr = bufnr })
+                    end, opts)
                 end
 
                 -- vim.api.nvim_create_autocmd("CursorHold", {

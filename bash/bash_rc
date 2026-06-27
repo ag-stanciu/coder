@@ -9,3 +9,4 @@ if [[ -z "${TMUX:-}" && "${TERM:-}" == "xterm-256color" ]] && infocmp -x xterm-g
 fi
 
 alias aws-sso='aws sso login --use-device-code'
+alias tt='tmux new-session -A -s main'

@@ -152,11 +152,6 @@ ensure_gitconfig_include() {
 install_tpm() {
   local dst="$HOME/.tmux/plugins/tpm"
 
-  if [[ "${SETUP_CODER_SKIP_TPM:-}" == "1" ]]; then
-    warn "SETUP_CODER_SKIP_TPM=1; skipping TPM"
-    return
-  fi
-
   if [[ -d "$dst/.git" ]]; then
     log "TPM already installed"
     return
@@ -170,6 +165,20 @@ install_tpm() {
   log "cloning TPM"
   if ! git clone --depth=1 https://github.com/tmux-plugins/tpm "$dst"; then
     warn "failed to clone TPM; tmux config is still installed"
+  fi
+}
+
+install_tmux_plugins() {
+  local installer="$HOME/.tmux/plugins/tpm/bin/install_plugins"
+
+  if [[ ! -x "$installer" ]]; then
+    warn "TPM installer not found; skipping tmux plugin install"
+    return
+  fi
+
+  log "installing tmux plugins"
+  if ! "$installer"; then
+    warn "failed to install tmux plugins"
   fi
 }
 
@@ -222,5 +231,6 @@ log "copying k9s config"
 copy_dir "$repo_dir/k9s" "$HOME/.config/k9s"
 
 install_tpm
+install_tmux_plugins
 
 log "setup complete"
