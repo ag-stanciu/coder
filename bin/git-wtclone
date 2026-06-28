@@ -1,0 +1,48 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+usage() {
+  echo "usage: git-wtclone <repo-url> [dir] [branch]" >&2
+  echo "example: git-wtclone git@github.com:org/repo.git ~/dev/repo main" >&2
+}
+
+die() {
+  echo "error: $*" >&2
+  exit 1
+}
+
+[[ $# -ge 1 && $# -le 3 ]] || {
+  usage
+  exit 2
+}
+
+url="$1"
+dir="${2:-}"
+branch="${3:-}"
+
+if [[ -z "$dir" ]]; then
+  name="${url##*/}"
+  dir="${name%.git}"
+  [[ -n "$dir" ]] || die "could not infer dir from repo url"
+fi
+
+[[ ! -e "$dir/.git" ]] || die "$dir/.git already exists"
+mkdir -p "$dir"
+
+git clone --bare \
+  --config remote.origin.fetch='+refs/heads/*:refs/remotes/origin/*' \
+  "$url" "$dir/.git"
+
+if [[ -z "$branch" ]]; then
+  branch="$(git --git-dir="$dir/.git" symbolic-ref --quiet --short HEAD || true)"
+  [[ -n "$branch" ]] || die "could not detect default branch; pass it explicitly"
+fi
+
+worktree_name="${branch//\//-}"
+git --git-dir="$dir/.git" worktree add "$dir/$worktree_name" "$branch"
+
+if git --git-dir="$dir/.git" show-ref --verify --quiet "refs/remotes/origin/$branch"; then
+  git -C "$dir/$worktree_name" branch -u "origin/$branch"
+fi
+
+echo "created $dir/$worktree_name"

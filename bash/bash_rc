@@ -8,6 +8,12 @@ export HISTSIZE=50000
 export HISTFILESIZE=100000
 export HISTCONTROL=ignoreboth:erasedups
 export HISTIGNORE='history:exit:pwd:clear:bg:fg'
+
+case ":$PATH:" in
+  *":$HOME/.local/bin:"*) ;;
+  *) export PATH="$HOME/.local/bin:$PATH" ;;
+esac
+
 shopt -s histappend
 shopt -s cmdhist
 shopt -s lithist

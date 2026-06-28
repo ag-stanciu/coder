@@ -5,6 +5,7 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 bash_dir="$repo_dir/bash"
 git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
+user_bin="$HOME/.local/bin"
 
 bash_begin="# >>> setup-coder bash_rc >>>"
 bash_end="# <<< setup-coder bash_rc <<<"
@@ -188,6 +189,7 @@ require_file "$bash_dir/bash_rc"
 require_file "$git_config"
 require_file "$ghostty_terminfo"
 require_file "$repo_dir/tmux.conf"
+require_dir "$repo_dir/bin"
 require_dir "$repo_dir/nvim"
 require_dir "$repo_dir/k9s"
 
@@ -196,7 +198,8 @@ mkdir -p \
   "$HOME/.config/tmux" \
   "$HOME/.config/nvim" \
   "$HOME/.config/k9s" \
-  "$HOME/.tmux/plugins"
+  "$HOME/.tmux/plugins" \
+  "$user_bin"
 
 install_ghostty_terminfo
 
@@ -220,6 +223,9 @@ fi
 log "installing git config"
 install_file "$git_config" "$HOME/.config/setup-coder/gitconfig"
 ensure_gitconfig_include
+
+log "installing user bin"
+copy_dir "$repo_dir/bin" "$user_bin"
 
 log "installing tmux config"
 install_file "$repo_dir/tmux.conf" "$HOME/.config/tmux/tmux.conf"

@@ -7,3 +7,8 @@
   co = checkout
   br = branch
   cob = checkout -b
+
+  wtl = worktree list
+  wtr = worktree remove
+  wtp = worktree prune
+  wtn = "!f(){ b=\"$1\"; base=\"${2:-origin/main}\"; [ -n \"$b\" ] || { echo 'usage: git wtn <branch> [base]' >&2; return 2; }; root=$(dirname \"$(git rev-parse --path-format=absolute --git-common-dir)\"); dir=\"$root/$(printf '%s' \"$b\" | tr / -)\"; git fetch origin --prune && git worktree add --no-track -b \"$b\" \"$dir\" \"$base\"; }; f"
