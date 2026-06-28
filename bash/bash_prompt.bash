@@ -11,6 +11,7 @@ __c() {
   P_PURPLE="$(__c 5)"
   P_CYAN="$(__c 6)"
   P_BRIGHT_BLACK="$(__c 8)"
+  P_BRIGHT_RED="$(__c 9)"
   P_PINK="$(__c 218)"
 
   __prompt_git() {
@@ -41,6 +42,39 @@ __c() {
     [[ -n "$ab" ]] && printf ' %s%s%s' "$P_CYAN" "$ab" "$P_RESET"
   }
 
+  __prompt_kube() {
+    command -v kubectl >/dev/null 2>&1 || return
+
+    local context
+    context="$(kubectl config current-context 2>/dev/null)" || return
+    [[ -n "$context" ]] || return
+
+    printf '⎈ %s' "$context"
+  }
+
+  __prompt_right() {
+    local text="$1"
+    [[ -n "$text" && -n "$TERM" && "$TERM" != dumb ]] || return
+
+    local color="$P_CYAN"
+    [[ "$text" == *prod* ]] && color="${P_BRIGHT_RED:-$P_RED}"
+
+    local cols="${COLUMNS:-}"
+    [[ "$cols" =~ ^[0-9]+$ ]] || cols="$(tput cols 2>/dev/null)"
+    [[ "$cols" =~ ^[0-9]+$ ]] || return
+
+    local len="${#text}"
+    (( len > 0 && cols > len + 2 )) || return
+
+    local reset="$P_RESET"
+    color="${color//\\[/}"
+    color="${color//\\]/}"
+    reset="${reset//\\[/}"
+    reset="${reset//\\]/}"
+
+    printf '\[\e7\e[%dG%s%s%s\e8\]' "$((cols - len + 1))" "$color" "$text" "$reset"
+  }
+
   __prompt_command() {
     local status=$?
     history -a
@@ -58,7 +92,8 @@ __c() {
     local symbol_color="$P_PURPLE"
     [[ "$status" -ne 0 ]] && symbol_color="$P_RED"
 
-    PS1="\n${login}${P_BLUE}\W${P_RESET}$(__prompt_git)\n${venv}${symbol_color}❯${P_RESET} "
+    local right="$(__prompt_right "$(__prompt_kube)")"
+    PS1="\n${login}${P_BLUE}\W${P_RESET}$(__prompt_git)${right}\n${venv}${symbol_color}❯${P_RESET} "
     PS2="${P_PURPLE}❯${P_RESET} "
     }
 
