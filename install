@@ -6,14 +6,15 @@ bash_dir="$repo_dir/bash"
 git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
 starship_config="$repo_dir/starship.toml"
+setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
 
-bash_begin="# >>> setup-coder bash_rc >>>"
-bash_end="# <<< setup-coder bash_rc <<<"
-profile_begin="# >>> setup-coder bash_profile >>>"
-profile_end="# <<< setup-coder bash_profile <<<"
-git_begin="# >>> setup-coder gitconfig >>>"
-git_end="# <<< setup-coder gitconfig <<<"
+bash_begin="# >>> setup_coder bash_rc >>>"
+bash_end="# <<< setup_coder bash_rc <<<"
+profile_begin="# >>> setup_coder bash_profile >>>"
+profile_end="# <<< setup_coder bash_profile <<<"
+git_begin="# >>> setup_coder gitconfig >>>"
+git_end="# <<< setup_coder gitconfig <<<"
 
 log() {
   echo "==> $*"
@@ -78,8 +79,6 @@ inject_bash_rc() {
   awk -v begin="$bash_begin" -v end="$bash_end" '
     $0 == begin { skip = 1; next }
     $0 == end { skip = 0; next }
-    $0 ~ /^[[:space:]]*(source|\.)[[:space:]]+.*personal\/bash\/prompt\.bash/ { next }
-    $0 ~ /^[[:space:]]*(source|\.)[[:space:]]+.*setup-coder\/bash_prompt\.bash/ { next }
     !skip { print }
   ' "$bashrc" > "$next"
 
@@ -87,27 +86,20 @@ inject_bash_rc() {
     cat "$next"
     echo
     echo "$bash_begin"
-    cat "$bash_dir/bash_rc"
+    echo '[ -f "$HOME/.config/setup_coder/bash_rc" ] && . "$HOME/.config/setup_coder/bash_rc"'
     echo "$bash_end"
   } > "$bashrc"
 
   rm -f "$next"
 }
 
-ensure_bash_profile_sources_bashrc() {
+inject_bash_profile() {
   local profile="$HOME/.bash_profile"
   local next
 
-  if [[ ! -e "$profile" ]]; then
-    install_file "$bash_dir/bash_profile" "$profile"
-    return
-  fi
-
-  if grep -Eq '(^|[[:space:]])(\.|source)[[:space:]]+(.*/)?\.bashrc' "$profile"; then
-    return
-  fi
-
+  touch "$profile"
   next="$(mktemp)"
+
   awk -v begin="$profile_begin" -v end="$profile_end" '
     $0 == begin { skip = 1; next }
     $0 == end { skip = 0; next }
@@ -118,7 +110,7 @@ ensure_bash_profile_sources_bashrc() {
     cat "$next"
     echo
     echo "$profile_begin"
-    cat "$bash_dir/bash_profile"
+    echo '[ -f "$HOME/.config/setup_coder/bash_profile" ] && . "$HOME/.config/setup_coder/bash_profile"'
     echo "$profile_end"
   } > "$profile"
 
@@ -143,7 +135,7 @@ ensure_gitconfig_include() {
     echo
     echo "$git_begin"
     echo "[include]"
-    echo "  path = ~/.config/setup-coder/gitconfig"
+    echo "  path = ~/.config/setup_coder/gitconfig"
     echo "$git_end"
   } > "$gitconfig"
 
@@ -206,7 +198,7 @@ require_dir "$repo_dir/nvim"
 require_dir "$repo_dir/k9s"
 
 mkdir -p \
-  "$HOME/.config/setup-coder" \
+  "$setup_coder_dir" \
   "$HOME/.config/tmux" \
   "$HOME/.config/nvim" \
   "$HOME/.config/k9s" \
@@ -220,11 +212,12 @@ install_starship
 log "installing starship config"
 install_file "$starship_config" "$HOME/.config/starship.toml"
 
-log "removing old bash prompt"
-rm -f "$HOME/.config/setup-coder/bash_prompt.bash"
+log "installing bash files"
+install_file "$bash_dir/bash_rc" "$setup_coder_dir/bash_rc"
+install_file "$bash_dir/bash_profile" "$setup_coder_dir/bash_profile"
 
-log "ensuring ~/.bash_profile sources ~/.bashrc"
-ensure_bash_profile_sources_bashrc
+log "injecting bash profile"
+inject_bash_profile
 
 log "injecting bash rc"
 inject_bash_rc
@@ -238,7 +231,7 @@ if awk -v begin="$bash_begin" -v end="$bash_end" '
 fi
 
 log "installing git config"
-install_file "$git_config" "$HOME/.config/setup-coder/gitconfig"
+install_file "$git_config" "$setup_coder_dir/gitconfig"
 ensure_gitconfig_include
 
 log "installing user bin"

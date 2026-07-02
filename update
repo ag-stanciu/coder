@@ -69,7 +69,7 @@ ssh_cmd=(
 log "checking $workspace_host"
 "${ssh_cmd[@]}" 'printf "connected as %s on %s\n" "$USER" "$HOSTNAME"'
 
-remote_tmp="$("${ssh_cmd[@]}" 'mktemp -d "${TMPDIR:-/tmp}/setup-coder.XXXXXX"')"
+remote_tmp="$("${ssh_cmd[@]}" 'mktemp -d "${TMPDIR:-/tmp}/setup_coder.XXXXXX"')"
 cleanup() {
   "${ssh_cmd[@]}" "rm -rf $(printf "%q" "$remote_tmp")" >/dev/null 2>&1 || true
 }
