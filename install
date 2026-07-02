@@ -5,6 +5,7 @@ repo_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 bash_dir="$repo_dir/bash"
 git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
+starship_config="$repo_dir/starship.toml"
 user_bin="$HOME/.local/bin"
 
 bash_begin="# >>> setup-coder bash_rc >>>"
@@ -87,7 +88,6 @@ inject_bash_rc() {
     echo
     echo "$bash_begin"
     cat "$bash_dir/bash_rc"
-    echo '[ -f "$HOME/.config/setup-coder/bash_prompt.bash" ] && . "$HOME/.config/setup-coder/bash_prompt.bash"'
     echo "$bash_end"
   } > "$bashrc"
 
@@ -183,11 +183,23 @@ install_tmux_plugins() {
   fi
 }
 
-require_file "$bash_dir/bash_prompt.bash"
+install_starship() {
+  if [[ -x "$user_bin/starship" ]]; then
+    log "starship already installed"
+    return
+  fi
+
+  log "installing starship"
+  if ! curl -fsSL https://starship.rs/install.sh | sh -s -- -b "$user_bin" -y; then
+    warn "failed to install starship"
+  fi
+}
+
 require_file "$bash_dir/bash_profile"
 require_file "$bash_dir/bash_rc"
 require_file "$git_config"
 require_file "$ghostty_terminfo"
+require_file "$starship_config"
 require_file "$repo_dir/tmux.conf"
 require_dir "$repo_dir/bin"
 require_dir "$repo_dir/nvim"
@@ -203,8 +215,13 @@ mkdir -p \
 
 install_ghostty_terminfo
 
-log "installing bash prompt"
-install_file "$bash_dir/bash_prompt.bash" "$HOME/.config/setup-coder/bash_prompt.bash"
+install_starship
+
+log "installing starship config"
+install_file "$starship_config" "$HOME/.config/starship.toml"
+
+log "removing old bash prompt"
+rm -f "$HOME/.config/setup-coder/bash_prompt.bash"
 
 log "ensuring ~/.bash_profile sources ~/.bashrc"
 ensure_bash_profile_sources_bashrc

@@ -35,7 +35,7 @@ workspace_host="${workspace##*/}"
 
 script_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
 
-for path in install bash bin git tmux.conf nvim k9s terminfo; do
+for path in install bash bin git tmux.conf nvim k9s terminfo starship.toml; do
   [[ -e "$script_dir/$path" ]] || die "missing $script_dir/$path"
 done
 
