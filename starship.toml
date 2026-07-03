@@ -6,14 +6,25 @@ $git_branch\
 $git_state\
 $git_status\
 $cmd_duration\
+$fill\
+$kubernetes\
 $line_break\
 $python\
 $character"""
 
-right_format = "$kubernetes"
+[fill]
+symbol = " "
+
+[hostname]
+disabled = true
+
+[username]
+format = "[$user]($style): "
 
 [directory]
 style = "blue"
+truncate_to_repo = false
+truncation_length = 0
 
 [character]
 success_symbol = "[❯](purple)"
