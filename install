@@ -182,7 +182,7 @@ install_starship() {
   fi
 
   log "installing starship"
-  if ! curl -fsSL https://starship.rs/install.sh | sh -s -- -b "$user_bin" -y; then
+  if ! (curl -fsSL https://starship.rs/install.sh | sh -s -- -b "$user_bin" -y) >/dev/null 2>&1; then
     warn "failed to install starship"
   fi
 }
