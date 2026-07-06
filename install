@@ -6,6 +6,8 @@ bash_dir="$repo_dir/bash"
 git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
 starship_config="$repo_dir/starship.toml"
+herdr_config="$repo_dir/herdr/config.toml"
+hunk_config="$repo_dir/hunk/config.toml"
 setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
 
@@ -187,11 +189,58 @@ install_starship() {
   fi
 }
 
+install_hunk() {
+  local tmp binary
+
+  if [[ -x "$user_bin/hunk" ]]; then
+    log "hunk already installed"
+    return
+  fi
+
+  log "installing hunk"
+  tmp="$(mktemp -d)"
+
+  if ! curl -fsSL "https://github.com/modem-dev/hunk/releases/latest/download/hunkdiff-linux-x64.tar.gz" -o "$tmp/hunk.tar.gz"; then
+    warn "failed to download hunk"
+    rm -rf "$tmp"
+    return
+  fi
+
+  if ! tar -xzf "$tmp/hunk.tar.gz" -C "$tmp"; then
+    warn "failed to extract hunk"
+    rm -rf "$tmp"
+    return
+  fi
+
+  binary=""
+  while IFS= read -r candidate; do
+    binary="$candidate"
+    break
+  done < <(find "$tmp" -type f \( -name hunk -o -name hunkdiff \))
+
+  if [[ -z "$binary" ]]; then
+    warn "hunk binary not found in release archive"
+    rm -rf "$tmp"
+    return
+  fi
+
+  if ! install -m 755 "$binary" "$user_bin/hunk"; then
+    warn "failed to install hunk"
+    rm -rf "$tmp"
+    return
+  fi
+
+  rm -rf "$tmp"
+  log "installed hunk"
+}
+
 require_file "$bash_dir/bash_profile"
 require_file "$bash_dir/bash_rc"
 require_file "$git_config"
 require_file "$ghostty_terminfo"
 require_file "$starship_config"
+require_file "$herdr_config"
+require_file "$hunk_config"
 require_file "$repo_dir/tmux.conf"
 require_dir "$repo_dir/bin"
 require_dir "$repo_dir/nvim"
@@ -199,6 +248,8 @@ require_dir "$repo_dir/k9s"
 
 mkdir -p \
   "$setup_coder_dir" \
+  "$HOME/.config/herdr" \
+  "$HOME/.config/hunk" \
   "$HOME/.config/tmux" \
   "$HOME/.config/nvim" \
   "$HOME/.config/k9s" \
@@ -208,9 +259,16 @@ mkdir -p \
 install_ghostty_terminfo
 
 install_starship
+install_hunk
 
 log "installing starship config"
 install_file "$starship_config" "$HOME/.config/starship.toml"
+
+log "installing herdr config"
+install_file "$herdr_config" "$HOME/.config/herdr/config.toml"
+
+log "installing hunk config"
+install_file "$hunk_config" "$HOME/.config/hunk/config.toml"
 
 log "installing bash files"
 install_file "$bash_dir/bash_rc" "$setup_coder_dir/bash_rc"
