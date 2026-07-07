@@ -10,7 +10,7 @@ herdr_config="$repo_dir/herdr/config.toml"
 hunk_config="$repo_dir/hunk/config.toml"
 setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
-hunk_version="0.16.0"
+hunk_version="0.17.0"
 
 bash_begin="# >>> setup_coder bash_rc >>>"
 bash_end="# <<< setup_coder bash_rc <<<"
