@@ -10,6 +10,7 @@ herdr_config="$repo_dir/herdr/config.toml"
 hunk_config="$repo_dir/hunk/config.toml"
 setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
+hunk_version="0.16.0"
 
 bash_begin="# >>> setup_coder bash_rc >>>"
 bash_end="# <<< setup_coder bash_rc <<<"
@@ -50,6 +51,29 @@ copy_dir() {
   mkdir -p "$dst"
   cp -a "$src/." "$dst/"
   find "$dst" -type f -name '._*' -delete
+}
+
+installed_version() {
+  local binary="$1"
+
+  [[ -x "$binary" ]] || return 1
+  "$binary" --version 2>/dev/null | awk 'match($0, /[0-9]+[.][0-9]+[.][0-9]+/) { print substr($0, RSTART, RLENGTH); exit }'
+}
+
+should_install_binary() {
+  local name="$1" binary="$2" desired="$3" current
+
+  current="$(installed_version "$binary" || true)"
+  if [[ "$current" == "$desired" ]]; then
+    log "$name $desired already installed"
+    return 1
+  fi
+
+  if [[ -n "$current" ]]; then
+    log "updating $name $current -> $desired"
+  else
+    log "installing $name $desired"
+  fi
 }
 
 install_ghostty_terminfo() {
@@ -192,15 +216,10 @@ install_starship() {
 install_hunk() {
   local tmp binary
 
-  if [[ -x "$user_bin/hunk" ]]; then
-    log "hunk already installed"
-    return
-  fi
-
-  log "installing hunk"
+  should_install_binary "hunk" "$user_bin/hunk" "$hunk_version" || return
   tmp="$(mktemp -d)"
 
-  if ! curl -fsSL "https://github.com/modem-dev/hunk/releases/latest/download/hunkdiff-linux-x64.tar.gz" -o "$tmp/hunk.tar.gz"; then
+  if ! curl -fsSL "https://github.com/modem-dev/hunk/releases/download/v${hunk_version}/hunkdiff-linux-x64.tar.gz" -o "$tmp/hunk.tar.gz"; then
     warn "failed to download hunk"
     rm -rf "$tmp"
     return
@@ -231,7 +250,7 @@ install_hunk() {
   fi
 
   rm -rf "$tmp"
-  log "installed hunk"
+  log "installed hunk $hunk_version"
 }
 
 require_file "$bash_dir/bash_profile"

@@ -82,6 +82,3 @@ git -C "$script_dir" ls-files -z |
 
 log "running install"
 "${ssh_cmd[@]}" "cd $(printf "%q" "$remote_tmp") && chmod +x ./install && ./install"
-
-log "setup complete"
-echo "Open a new SSH session. If tmux is running, restart it with: tmux kill-server"
