@@ -217,7 +217,7 @@ install_starship() {
 install_hunk() {
   local tmp binary
 
-  should_install_binary "hunk" "$user_bin/hunk" "$hunk_version" || return
+  should_install_binary "hunk" "$user_bin/hunk" "$hunk_version" || return 0
   tmp="$(mktemp -d)"
 
   if ! curl -fsSL "https://github.com/modem-dev/hunk/releases/download/v${hunk_version}/hunkdiff-linux-x64.tar.gz" -o "$tmp/hunk.tar.gz"; then
@@ -257,7 +257,7 @@ install_hunk() {
 install_zmx() {
   local tmp binary
 
-  should_install_binary "zmx" "$user_bin/zmx" "$zmx_version" || return
+  should_install_binary "zmx" "$user_bin/zmx" "$zmx_version" || return 0
   tmp="$(mktemp -d)"
 
   if ! curl -fsSL "https://github.com/neurosnap/zmx/releases/download/v${zmx_version}/zmx-${zmx_version}-linux-x86_64.tar.gz" -o "$tmp/zmx.tar.gz"; then
