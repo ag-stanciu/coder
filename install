@@ -11,6 +11,7 @@ hunk_config="$repo_dir/hunk/config.toml"
 setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
 hunk_version="0.17.0"
+zmx_version="0.6.0"
 
 bash_begin="# >>> setup_coder bash_rc >>>"
 bash_end="# <<< setup_coder bash_rc <<<"
@@ -253,6 +254,46 @@ install_hunk() {
   log "installed hunk $hunk_version"
 }
 
+install_zmx() {
+  local tmp binary
+
+  should_install_binary "zmx" "$user_bin/zmx" "$zmx_version" || return
+  tmp="$(mktemp -d)"
+
+  if ! curl -fsSL "https://github.com/neurosnap/zmx/releases/download/v${zmx_version}/zmx-${zmx_version}-linux-x86_64.tar.gz" -o "$tmp/zmx.tar.gz"; then
+    warn "failed to download zmx"
+    rm -rf "$tmp"
+    return
+  fi
+
+  if ! tar -xzf "$tmp/zmx.tar.gz" -C "$tmp"; then
+    warn "failed to extract zmx"
+    rm -rf "$tmp"
+    return
+  fi
+
+  binary=""
+  while IFS= read -r candidate; do
+    binary="$candidate"
+    break
+  done < <(find "$tmp" -type f -name zmx)
+
+  if [[ -z "$binary" ]]; then
+    warn "zmx binary not found in release archive"
+    rm -rf "$tmp"
+    return
+  fi
+
+  if ! install -m 755 "$binary" "$user_bin/zmx"; then
+    warn "failed to install zmx"
+    rm -rf "$tmp"
+    return
+  fi
+
+  rm -rf "$tmp"
+  log "installed zmx $zmx_version"
+}
+
 require_file "$bash_dir/bash_profile"
 require_file "$bash_dir/bash_rc"
 require_file "$git_config"
@@ -279,6 +320,7 @@ install_ghostty_terminfo
 
 install_starship
 install_hunk
+install_zmx
 
 log "installing starship config"
 install_file "$starship_config" "$HOME/.config/starship.toml"
