@@ -7,11 +7,11 @@ git_config="$repo_dir/git/gitconfig"
 ghostty_terminfo="$repo_dir/terminfo/xterm-ghostty.terminfo"
 starship_config="$repo_dir/starship.toml"
 herdr_config="$repo_dir/herdr/config.toml"
-hunk_config="$repo_dir/hunk/config.toml"
+tuicr_config="$repo_dir/tuicr/config.toml"
 setup_coder_dir="$HOME/.config/setup_coder"
 user_bin="$HOME/.local/bin"
 hunk_version="0.17.0"
-zmx_version="0.6.0"
+zmx_version="0.7.0"
 
 bash_begin="# >>> setup_coder bash_rc >>>"
 bash_end="# <<< setup_coder bash_rc <<<"
@@ -214,46 +214,6 @@ install_starship() {
   fi
 }
 
-install_hunk() {
-  local tmp binary
-
-  should_install_binary "hunk" "$user_bin/hunk" "$hunk_version" || return 0
-  tmp="$(mktemp -d)"
-
-  if ! curl -fsSL "https://github.com/modem-dev/hunk/releases/download/v${hunk_version}/hunkdiff-linux-x64.tar.gz" -o "$tmp/hunk.tar.gz"; then
-    warn "failed to download hunk"
-    rm -rf "$tmp"
-    return
-  fi
-
-  if ! tar -xzf "$tmp/hunk.tar.gz" -C "$tmp"; then
-    warn "failed to extract hunk"
-    rm -rf "$tmp"
-    return
-  fi
-
-  binary=""
-  while IFS= read -r candidate; do
-    binary="$candidate"
-    break
-  done < <(find "$tmp" -type f \( -name hunk -o -name hunkdiff \))
-
-  if [[ -z "$binary" ]]; then
-    warn "hunk binary not found in release archive"
-    rm -rf "$tmp"
-    return
-  fi
-
-  if ! install -m 755 "$binary" "$user_bin/hunk"; then
-    warn "failed to install hunk"
-    rm -rf "$tmp"
-    return
-  fi
-
-  rm -rf "$tmp"
-  log "installed hunk $hunk_version"
-}
-
 install_zmx() {
   local tmp binary
 
@@ -292,6 +252,21 @@ install_zmx() {
 
   rm -rf "$tmp"
   log "installed zmx $zmx_version"
+
+install_tuicr() {
+  if [[ -x "$user_bin/tuicr" ]]; then
+    log "tuicr already installed"
+    return
+  fi
+
+  log "installing tuicr"
+  if ! (
+    curl -fsSL https://tuicr.dev/install.sh |
+      TUICR_INSTALL_DIR="$user_bin" TUICR_INSTALL_YES=1 sh
+  ) >/dev/null 2>&1; then
+    warn "failed to install tuicr"
+  fi
+>>>>>>> bd91105 (tuicr)
 }
 
 require_file "$bash_dir/bash_profile"
@@ -300,7 +275,7 @@ require_file "$git_config"
 require_file "$ghostty_terminfo"
 require_file "$starship_config"
 require_file "$herdr_config"
-require_file "$hunk_config"
+require_file "$tuicr_config"
 require_file "$repo_dir/tmux.conf"
 require_dir "$repo_dir/bin"
 require_dir "$repo_dir/nvim"
@@ -309,7 +284,7 @@ require_dir "$repo_dir/k9s"
 mkdir -p \
   "$setup_coder_dir" \
   "$HOME/.config/herdr" \
-  "$HOME/.config/hunk" \
+  "$HOME/.config/tuicr" \
   "$HOME/.config/tmux" \
   "$HOME/.config/nvim" \
   "$HOME/.config/k9s" \
@@ -319,8 +294,8 @@ mkdir -p \
 install_ghostty_terminfo
 
 install_starship
-install_hunk
 install_zmx
+install_tuicr
 
 log "installing starship config"
 install_file "$starship_config" "$HOME/.config/starship.toml"
@@ -328,8 +303,16 @@ install_file "$starship_config" "$HOME/.config/starship.toml"
 log "installing herdr config"
 install_file "$herdr_config" "$HOME/.config/herdr/config.toml"
 
-log "installing hunk config"
-install_file "$hunk_config" "$HOME/.config/hunk/config.toml"
+log "installing tuicr config"
+install_file "$tuicr_config" "$HOME/.config/tuicr/config.toml"
+
+if [[ -x "$user_bin/tuicr" ]]; then
+  log "removing hunk"
+  rm -f "$user_bin/hunk" "$HOME/.config/hunk/config.toml"
+  rmdir "$HOME/.config/hunk" 2>/dev/null || true
+else
+  warn "tuicr unavailable; keeping hunk"
+fi
 
 log "installing bash files"
 install_file "$bash_dir/bash_rc" "$setup_coder_dir/bash_rc"
