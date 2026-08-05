@@ -252,6 +252,7 @@ install_zmx() {
 
   rm -rf "$tmp"
   log "installed zmx $zmx_version"
+}
 
 install_tuicr() {
   if [[ -x "$user_bin/tuicr" ]]; then
@@ -266,7 +267,6 @@ install_tuicr() {
   ) >/dev/null 2>&1; then
     warn "failed to install tuicr"
   fi
->>>>>>> bd91105 (tuicr)
 }
 
 require_file "$bash_dir/bash_profile"
